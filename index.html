@@ -1,1 +1,343 @@
+import React, { useState, useEffect } from 'react';
+import { Plus, Star, Trash2, Edit3, Image as ImageIcon, Search, Heart } from 'lucide-react';
 
+// --- カテゴリの定義 ---
+const CATEGORIES = ['すべて', 'スキンケア', 'ベースメイク', 'アイメイク', 'リップ', 'ヘアケア', 'その他'];
+
+// --- 初期サンプルデータ ---
+const INITIAL_DATA = [
+  {
+    id: '1',
+    name: 'モイスチャー リップスティック',
+    brand: 'サンプルブランド',
+    category: 'リップ',
+    rating: 5,
+    memo: '発色が良くて、全然乾燥しない！デートの時の必須アイテム💄',
+    imageUrl: 'https://images.unsplash.com/photo-1586495777744-4413f21062fa?auto=format&fit=crop&q=80&w=400',
+  },
+  {
+    id: '2',
+    name: 'クリア グロウ ファンデーション',
+    brand: 'CosmeSample',
+    category: 'ベースメイク',
+    rating: 4,
+    memo: '自然なツヤ感が出る。カバー力はそこそこだけど普段使いにぴったり。',
+    imageUrl: 'https://images.unsplash.com/photo-1599305090598-fe179d501227?auto=format&fit=crop&q=80&w=400',
+  }
+];
+
+export default function App() {
+  // --- 状態管理 (State) ---
+  const [cosmetics, setCosmetics] = useState(() => {
+    // localStorageからデータを読み込む（なければサンプルデータ）
+    const saved = localStorage.getItem('my-cosmetics-data');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return INITIAL_DATA;
+      }
+    }
+    return INITIAL_DATA;
+  });
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('すべて');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // フォーム用の状態
+  const [formData, setFormData] = useState({
+    name: '',
+    brand: '',
+    category: 'スキンケア',
+    rating: 5,
+    memo: '',
+    imageUrl: ''
+  });
+
+  // --- データの保存 ---
+  useEffect(() => {
+    localStorage.setItem('my-cosmetics-data', JSON.stringify(cosmetics));
+  }, [cosmetics]);
+
+  // --- 関数 ---
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!formData.name) return;
+
+    const newCosmetic = {
+      ...formData,
+      id: Date.now().toString(),
+    };
+
+    setCosmetics([newCosmetic, ...cosmetics]);
+    setIsModalOpen(false);
+    // フォームをリセット
+    setFormData({ name: '', brand: '', category: 'スキンケア', rating: 5, memo: '', imageUrl: '' });
+  };
+
+  const handleDelete = (id) => {
+    setCosmetics(cosmetics.filter(item => item.id !== id));
+  };
+
+  // --- フィルタリング ---
+  const filteredCosmetics = cosmetics.filter(item => {
+    const matchCategory = activeCategory === 'すべて' || item.category === activeCategory;
+    const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                        item.brand.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchCategory && matchSearch;
+  });
+
+  // --- 描画 (Render) ---
+  return (
+    <div className="min-h-screen bg-rose-50 font-sans text-gray-800 pb-20">
+      
+      {/* ヘッダー */}
+      <header className="bg-white shadow-sm sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-rose-600">
+            <Heart className="fill-current" size={24} />
+            <h1 className="text-xl font-bold tracking-wider">My Cosmetics</h1>
+          </div>
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-full text-sm font-medium transition-colors flex items-center gap-1 shadow-sm"
+          >
+            <Plus size={18} />
+            <span className="hidden sm:inline">コスメを追加</span>
+          </button>
+        </div>
+      </header>
+
+      <main className="max-w-4xl mx-auto px-4 py-6">
+        
+        {/* 検索・フィルターバー */}
+        <div className="mb-8 space-y-4">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="ブランド名やアイテム名で検索..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-full border border-gray-200 focus:outline-none focus:border-rose-300 focus:ring-2 focus:ring-rose-100 transition-all bg-white shadow-sm"
+            />
+          </div>
+
+          <div className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide">
+            {CATEGORIES.map(category => (
+              <button
+                key={category}
+                onClick={() => setActiveCategory(category)}
+                className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                  activeCategory === category 
+                    ? 'bg-rose-500 text-white border-rose-500 shadow-sm' 
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-rose-50'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* コスメ一覧グリッド */}
+        {filteredCosmetics.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCosmetics.map(item => (
+              <div key={item.id} className="bg-white rounded-2xl shadow-sm border border-rose-100 overflow-hidden hover:shadow-md transition-shadow group relative">
+                
+                {/* 削除ボタン */}
+                <button 
+                  onClick={() => handleDelete(item.id)}
+                  className="absolute top-3 right-3 p-2 bg-white/80 backdrop-blur-sm rounded-full text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"
+                  title="削除"
+                >
+                  <Trash2 size={16} />
+                </button>
+
+                {/* 画像エリア */}
+                <div className="aspect-square bg-rose-50 relative overflow-hidden flex items-center justify-center">
+                  {item.imageUrl ? (
+                    <img 
+                      src={item.imageUrl} 
+                      alt={item.name} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.target.style.display = 'none'; }} // 画像読み込み失敗時のフォールバック
+                    />
+                  ) : (
+                    <ImageIcon className="text-rose-200" size={48} />
+                  )}
+                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-xs font-semibold text-rose-600 shadow-sm">
+                    {item.category}
+                  </div>
+                </div>
+
+                {/* 情報エリア */}
+                <div className="p-4">
+                  <p className="text-xs text-gray-500 font-medium mb-1">{item.brand || 'ブランド不明'}</p>
+                  <h3 className="font-bold text-gray-800 text-lg leading-tight mb-2 line-clamp-2">{item.name}</h3>
+                  
+                  {/* 星評価 */}
+                  <div className="flex gap-0.5 mb-3">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <Star 
+                        key={star} 
+                        size={16} 
+                        className={star <= item.rating ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-100 text-gray-200'} 
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* メモ */}
+                  {item.memo && (
+                    <div className="bg-rose-50/50 p-3 rounded-xl">
+                      <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">{item.memo}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-rose-100 text-rose-300 mb-4">
+              <Heart size={32} />
+            </div>
+            <p className="text-gray-500 font-medium">コスメが見つかりません</p>
+            <p className="text-sm text-gray-400 mt-1">新しくお気に入りを追加してみましょう！</p>
+          </div>
+        )}
+      </main>
+
+      {/* --- 追加モーダル --- */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-rose-50/30">
+              <h2 className="text-xl font-bold text-gray-800">新しいコスメを登録</h2>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 p-2"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              <form id="cosmetic-form" onSubmit={handleSubmit} className="space-y-5">
+                
+                {/* アイテム名 */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">アイテム名 <span className="text-rose-500">*</span></label>
+                  <input 
+                    type="text" 
+                    name="name"
+                    required
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-gray-50/50"
+                    placeholder="例: リップモンスター"
+                  />
+                </div>
+
+                {/* ブランド */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">ブランド名</label>
+                  <input 
+                    type="text" 
+                    name="brand"
+                    value={formData.brand}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-gray-50/50"
+                    placeholder="例: KATE"
+                  />
+                </div>
+
+                {/* カテゴリ */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">カテゴリ</label>
+                  <select 
+                    name="category"
+                    value={formData.category}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-gray-50/50 appearance-none"
+                  >
+                    {CATEGORIES.filter(c => c !== 'すべて').map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* おすすめ度 */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">おすすめ度</label>
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button
+                        type="button"
+                        key={star}
+                        onClick={() => setFormData(prev => ({ ...prev, rating: star }))}
+                        className="focus:outline-none hover:scale-110 transition-transform"
+                      >
+                        <Star 
+                          size={28} 
+                          className={star <= formData.rating ? 'fill-yellow-400 text-yellow-400' : 'fill-gray-100 text-gray-200'} 
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* メモ */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">メモ・レビュー</label>
+                  <textarea 
+                    name="memo"
+                    value={formData.memo}
+                    onChange={handleInputChange}
+                    rows="3"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-gray-50/50 resize-none"
+                    placeholder="使ってみた感想や、購入したお店など..."
+                  ></textarea>
+                </div>
+
+                {/* 画像URL (簡易版) */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">画像URL (任意)</label>
+                  <input 
+                    type="url" 
+                    name="imageUrl"
+                    value={formData.imageUrl}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100 transition-all bg-gray-50/50"
+                    placeholder="https://..."
+                  />
+                  <p className="text-xs text-gray-400 mt-1">※ネット上の画像のリンクを貼り付けられます</p>
+                </div>
+
+              </form>
+            </div>
+
+            <div className="p-6 border-t border-gray-100 bg-gray-50">
+              <button 
+                type="submit"
+                form="cosmetic-form"
+                className="w-full bg-rose-500 hover:bg-rose-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-sm text-lg"
+              >
+                登録する
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
